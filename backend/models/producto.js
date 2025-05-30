@@ -1,12 +1,11 @@
 const mongoose = require('mongoose');
 
-const productoSchema = new mongoose.Schema({
-  nombre: { type: String, required: true },
-  precio: { type: Number, required: true },
-  descripcion: { type: String },
-  stock: { type: Number, required: true, default: 0 }
+const resenaSchema = new mongoose.Schema({
+  producto: { type: mongoose.Schema.Types.ObjectId, ref: 'Producto', required: true },
+  usuario: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
+  comentario: { type: String, required: true },
+  estrellas: { type: Number, min: 1, max: 5, required: true },
+  fecha: { type: Date, default: Date.now }
 });
 
-const Producto = mongoose.model('Producto', productoSchema);
-
-module.exports = Producto;
+module.exports = mongoose.model('Resena', resenaSchema);
