@@ -1,10 +1,19 @@
+const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
+
+// Ruta absoluta a la carpeta uploads
+const uploadDir = path.join(__dirname, 'uploads');
+
+// Verificar si la carpeta existe, si no, crearla
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 // Configuración del almacenamiento
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/');  // Asegúrate de que la carpeta exista
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
     const ext = path.extname(file.originalname);
