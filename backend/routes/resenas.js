@@ -7,6 +7,7 @@ const Producto = require('../models/producto');
 
 const JWT_SECRET = 'secreto-super-seguro';
 
+// Middleware para verificar token
 function verificarToken(req, res, next) {
   const token = req.headers['authorization'];
   if (!token) return res.status(401).json({ mensaje: 'Token requerido' });
