@@ -18,7 +18,6 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const port = 4550;
 const JWT_SECRET = 'secreto-super-seguro';
 
-// Middleware para verificar token
 function verificarToken(req, res, next) {
   const token = req.headers['authorization'];
   if (!token) return res.status(401).json({ mensaje: 'Token requerido' });
@@ -32,7 +31,6 @@ function verificarToken(req, res, next) {
   }
 }
 
-// Middleware para verificar rol admin
 function soloAdmin(req, res, next) {
   if (req.usuario.rol !== 'admin') {
     return res.status(403).json({ mensaje: 'Acceso restringido a administradores' });
