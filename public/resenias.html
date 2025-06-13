@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reseñas</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    #promedio-calificacion {
+      text-align: center;
+      font-size: 1.2em;
+      margin-bottom: 15px;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      background: white;
+      border-radius: 10px;
+      max-width: 600px;
+      margin: auto;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+    li {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+    }
+    textarea, select, button {
+      display: block;
+      margin: 10px auto;
+      padding: 10px;
+      width: 90%;
+      max-width: 600px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Reseñas del Producto</h1>
+  <div id="promedio-calificacion"></div>
+  <ul id="lista-reseñas"></ul>
+  <div id="form-reseña">
+    <textarea id="comentario" placeholder="Comentario..."></textarea>
+    <select id="estrellas">
+      <option value="5">★★★★★</option>
+      <option value="4">★★★★☆</option>
+      <option value="3">★★★☆☆</option>
+      <option value="2">★★☆☆☆</option>
+      <option value="1">★☆☆☆☆</option>
+    </select>
+    <button onclick="enviarReseña()">Enviar Reseña</button>
+  </div>
+  <button onclick="window.location.href='catalogo.html'">← Volver al catálogo</button>
+
+  <script>
+    const API = 'http://localhost:4550';
+    const token = localStorage.getItem('token');
+    const productoId = new URLSearchParams(window.location.search).get('productoId');
+
+    async function cargarReseñas() {
+      const promRes = await fetch(`${API}/resenas/${productoId}/promedio`);
+      const { promedio } = await promRes.json();
+      document.getElementById('promedio-calificacion').innerText = `Promedio: ${promedio} ★`;
+
+      const listaRes = await fetch(`${API}/resenas/${productoId}`);
+      const reseñas = await listaRes.json();
+      const ul = document.getElementById('lista-reseñas');
+      ul.innerHTML = '';
+      reseñas.forEach(r => {
+        ul.innerHTML += `<li><strong>${r.usuario.nombre}</strong>: ${r.estrellas}★ - ${r.comentario}</li>`;
+      });
+    }
+
+    async function enviarReseña() {
+      const comentario = document.getElementById('comentario').value;
+      const estrellas = document.getElementById('estrellas').value;
+      await fetch(`${API}/resenas/${productoId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ comentario, estrellas })
+      });
+      document.getElementById('comentario').value = '';
+      cargarReseñas();
+    }
+
+    cargarReseñas();
+  </script>
+</body>
+</html>
