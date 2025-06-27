@@ -56,8 +56,14 @@
   </style>
 </head>
 <body>
+
+  <nav style="background:#222;padding:10px 0 10px 0;text-align:center;margin-bottom:20px;">
+    <a href="catalogo.html" style="color:#fff;margin:0 15px;text-decoration:none;font-weight:bold;">Catálogo</a>
+    <a href="busqueda.html" style="color:#fff;margin:0 15px;text-decoration:none;font-weight:bold;">Búsqueda</a>
+    <a href="favoritos.html" style="color:#fff;margin:0 15px;text-decoration:none;font-weight:bold;">Favoritos</a>
+    <button onclick="cerrarSesion()" style="margin-left:30px;background:#e74c3c;color:#fff;border:none;padding:6px 16px;border-radius:5px;cursor:pointer;">Cerrar sesión</button>
+  </nav>
   <h1>Catálogo de Productos</h1>
-  <button onclick="cerrarSesion()">Cerrar sesión</button>
 
   <div id="form-container" style="display: none;">
     <form id="formulario">
@@ -102,6 +108,7 @@
         const tabla = document.getElementById('tabla-productos');
         tabla.innerHTML = '';
         productos.forEach(p => {
+          const esFavorito = (JSON.parse(localStorage.getItem('favoritos') || '[]')).includes(p._id);
           tabla.innerHTML += `
             <tr>
               <td>${p.imagen ? `<img src="http://localhost:4550${p.imagen}" alt="producto">` : ''}</td>
@@ -112,12 +119,25 @@
               <td>
                 ${rol === 'admin' ? `<button onclick="editarProducto('${p._id}')">Editar</button><button onclick="eliminarProducto('${p._id}')">Eliminar</button>` : ''}
                 <button onclick="verDetalles('${p._id}')">Ver Detalles</button>
+                <button onclick="toggleFavorito('${p._id}')" style="background:${esFavorito ? '#ffc107' : '#007bff'};color:#fff;">${esFavorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}</button>
               </td>
             </tr>`;
         });
       } catch (error) {
         alert('Error al cargar productos');
       }
+    }
+
+    // Hacer toggleFavorito global
+    window.toggleFavorito = function(id) {
+      let favoritos = JSON.parse(localStorage.getItem('favoritos') || '[]');
+      if (favoritos.includes(id)) {
+        favoritos = favoritos.filter(f => f !== id);
+      } else {
+        favoritos.push(id);
+      }
+      localStorage.setItem('favoritos', JSON.stringify(favoritos));
+      cargarProductos();
     }
 
     function verDetalles(id) {
