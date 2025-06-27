@@ -2,8 +2,8 @@ require('./db');
 
 const express = require('express');
 const cors = require('cors');
-const jwt = require('jsonwebtoken');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 
 const Producto = require('./models/producto');
 const rutasAuth = require('./routes/auth');
@@ -41,6 +41,7 @@ function soloAdmin(req, res, next) {
 }
 
 // Rutas
+const productosRoutes = require('./routes/productos');
 app.use('/auth', rutasAuth);
 app.use('/resenas', rutasResenas);
 
