@@ -65,6 +65,7 @@
       <input type="number" id="precio" placeholder="Precio" required>
       <textarea id="descripcion" placeholder="Descripción"></textarea>
       <input type="number" id="stock" placeholder="Stock" required>
+      <input type="text" id="categoria" placeholder="Categoría" required>
       <input type="file" id="imagen" accept="image/*">
       <button type="submit">Guardar</button>
     </form>
@@ -128,10 +129,24 @@
       const formData = new FormData(formulario);
       const imagen = document.getElementById('imagen').files[0];
       if (imagen) formData.append('imagen', imagen);
+      // Asegurarse de agregar la categoría
+      const categoria = document.getElementById('categoria').value;
+      formData.set('categoria', categoria);
       const url = editandoId ? `${API}/productos/${editandoId}` : `${API}/productos`;
       const method = editandoId ? 'PUT' : 'POST';
       try {
-        await fetch(url, { method, headers: { Authorization: 'Bearer ' + token }, body: formData });
+        const response = await fetch(url, { method, headers: { Authorization: 'Bearer ' + token }, body: formData });
+        if (!response.ok) {
+          const data = await response.json();
+          if (data.errores && Array.isArray(data.errores)) {
+            alert('Errores:\n' + data.errores.map(e => e.msg).join('\n'));
+          } else if (data.mensaje) {
+            alert('Error: ' + data.mensaje);
+          } else {
+            alert('Error desconocido al guardar producto');
+          }
+          return;
+        }
         formulario.reset();
         editandoId = null;
         cargarProductos();
@@ -157,6 +172,7 @@
         document.getElementById('precio').value = p.precio;
         document.getElementById('descripcion').value = p.descripcion;
         document.getElementById('stock').value = p.stock;
+        document.getElementById('categoria').value = p.categoria || '';
         editandoId = p._id;
       } catch {
         alert('Error al cargar producto');

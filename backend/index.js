@@ -6,6 +6,8 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 
 const Producto = require('./models/producto');
+const { validationResult } = require('express-validator');
+const validarProducto = require('./validators/producto-validator');
 const rutasAuth = require('./routes/auth');
 const rutasResenas = require('./routes/resenas');
 const upload = require('./middleware-multer');
@@ -50,69 +52,9 @@ app.get('/', (req, res) => {
   res.send('¡Bienvenido al catálogo de productos!');
 });
 
-// Obtener todos los productos
-app.get('/productos', async (req, res) => {
-  try {
-    const productos = await Producto.find();
-    res.json(productos);
-  } catch (error) {
-    res.status(500).json({ mensaje: 'Error al obtener productos' });
-  }
-});
 
-// Crear producto
-app.post('/productos', verificarToken, soloAdmin, upload.single('imagen'), async (req, res) => {
-  try {
-    const { nombre, precio, descripcion, stock } = req.body;
-    const imagen = req.file ? '/uploads/' + req.file.filename : null;
-
-    const nuevoProducto = new Producto({ nombre, precio, descripcion, stock, imagen });
-    await nuevoProducto.save();
-    res.status(201).json(nuevoProducto);
-  } catch (error) {
-    res.status(400).json({ mensaje: 'Error al crear producto' });
-  }
-});
-
-// Obtener producto por ID
-app.get('/productos/:id', async (req, res) => {
-  try {
-    const producto = await Producto.findById(req.params.id);
-    if (!producto) return res.status(404).json({ mensaje: 'Producto no encontrado' });
-    res.json(producto);
-  } catch (error) {
-    res.status(500).json({ mensaje: 'Error al obtener producto' });
-  }
-});
-
-// Actualizar producto por ID
-app.put('/productos/:id', verificarToken, soloAdmin, upload.single('imagen'), async (req, res) => {
-  try {
-    const { nombre, precio, descripcion, stock } = req.body;
-    const datosActualizados = { nombre, precio, descripcion, stock };
-
-    if (req.file) {
-      datosActualizados.imagen = '/uploads/' + req.file.filename;
-    }
-
-    const producto = await Producto.findByIdAndUpdate(req.params.id, datosActualizados, { new: true });
-    if (!producto) return res.status(404).json({ mensaje: 'Producto no encontrado' });
-    res.json(producto);
-  } catch (error) {
-    res.status(400).json({ mensaje: 'Error al actualizar producto' });
-  }
-});
-
-// Eliminar producto por ID
-app.delete('/productos/:id', verificarToken, soloAdmin, async (req, res) => {
-  try {
-    const producto = await Producto.findByIdAndDelete(req.params.id);
-    if (!producto) return res.status(404).json({ mensaje: 'Producto no encontrado' });
-    res.status(204).send();
-  } catch (error) {
-    res.status(500).json({ mensaje: 'Error al eliminar producto' });
-  }
-});
+// Usar el router de productos
+app.use('/productos', productosRoutes);
 
 // Iniciar servidor
 app.listen(port, () => {
