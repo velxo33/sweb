@@ -1,0 +1,48 @@
+
+    const API = 'http://localhost:4550';
+    const token = localStorage.getItem('token');
+
+    async function cargarFavoritos() {
+      if (!token) {
+        document.getElementById('tabla-favoritos').innerHTML = '<tr><td colspan="6">Debes iniciar sesión.</td></tr>';
+        return;
+      }
+      // Obtener favoritos del backend
+      const resFav = await fetch(API + '/favoritos', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const favoritos = await resFav.json();
+      if (!favoritos.length) {
+        document.getElementById('tabla-favoritos').innerHTML = '<tr><td colspan="6">No tienes productos favoritos.</td></tr>';
+        return;
+      }
+      const tabla = document.getElementById('tabla-favoritos');
+      tabla.innerHTML = '';
+      favoritos.forEach(p => {
+        tabla.innerHTML += `<tr>
+          <td>${escapeHtml(p.nombre)}</td>
+          <td>${escapeHtml(p.categoria||'')}</td>
+          <td>${p.precio}</td>
+          <td>${p.stock}</td>
+          <td>${escapeHtml(p.descripcion||'')}</td>
+          <td><button onclick="quitarFavorito('${p._id}')">Quitar</button></td>
+        </tr>`;
+      });
+    }
+
+    async function quitarFavorito(id) {
+      await fetch(API + '/favoritos/' + id, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      cargarFavoritos();
+    }
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+
+    cargarFavoritos();
+ 
