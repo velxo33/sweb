@@ -3,49 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>Login</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f4f6f8;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .container {
-      background: #fff;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      width: 350px;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    input, select, button {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      font-size: 16px;
-    }
-    button {
-      background-color: #007bff;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-    p {
-      color: red;
-      text-align: center;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
   <div class="container">
@@ -53,9 +13,9 @@
     <input type="text" id="reg-nombre" placeholder="Nombre">
     <input type="email" id="reg-correo" placeholder="Correo">
     <input type="password" id="reg-clave" placeholder="Contraseña">
-    <select id="reg-rol">
+    <select id="rol" name="rol" required>
+      <option value="cliente">Cliente</option>
       <option value="visitante">Visitante</option>
-      <option value="admin">Administrador</option>
     </select>
     <button onclick="registrar()">Registrar</button>
     <hr>
@@ -66,39 +26,79 @@
   </div>
 
   <script>
-    const API = 'http://localhost:4550';
-    async function registrar() {
-      const nombre = document.getElementById('reg-nombre').value;
-      const correo = document.getElementById('reg-correo').value;
-      const clave = document.getElementById('reg-clave').value;
-      const rol = document.getElementById('reg-rol').value;
-      const res = await fetch(API + '/auth/registro', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, correo, contraseña: clave, rol })
-      });
-      const data = await res.json();
-      alert(data.mensaje || 'Registrado');
-    }
+const API = 'http://localhost:4550';
 
-    async function login() {
-      const correo = document.getElementById('login-correo').value;
-      const clave = document.getElementById('login-clave').value;
-      const res = await fetch(API + '/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ correo, contraseña: clave })
-      });
-      const data = await res.json();
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-        const payload = JSON.parse(atob(data.token.split('.')[1]));
-        localStorage.setItem('rol', payload.rol);
-        window.location.href = 'catalogo.html';
-      } else {
-        document.getElementById('estado-login').innerText = data.mensaje || 'Error';
-      }
-    }
-  </script>
+function validarEmail(email) {
+  return /^[^@]+@[^@]+\.[a-zA-Z]{2,}$/.test(email);
+}
+
+function mostrarEstado(msg, tipo = 'error') {
+  const estado = document.getElementById('estado-login');
+  estado.innerText = msg;
+  estado.className = tipo;
+  estado.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function registrar() {
+  const nombre = document.getElementById('reg-nombre').value.trim();
+  const correo = document.getElementById('reg-correo').value.trim();
+  const clave = document.getElementById('reg-clave').value;
+  const rol = document.getElementById('rol').value;
+  let errores = [];
+
+  if (nombre.length < 2 || nombre.length > 50) errores.push('El nombre debe tener entre 2 y 50 caracteres.');
+  if (!/^[A-Za-zÁÉÍÓÚáéíóúñÑ ]+$/.test(nombre)) errores.push('El nombre solo puede contener letras y espacios.');
+  if (!validarEmail(correo)) errores.push('Correo inválido.');
+  if (clave.length < 8 || clave.length > 32) errores.push('La contraseña debe tener entre 8 y 32 caracteres.');
+
+  if (errores.length) {
+    mostrarEstado(errores.join('\n'));
+    return;
+  }
+
+  const res = await fetch(API + '/auth/registro', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, correo, contraseña: clave, rol })
+  });
+  const data = await res.json();
+  if (res.ok) {
+    mostrarEstado(data.mensaje || 'Registrado', 'success');
+    document.getElementById('reg-nombre').value = '';
+    document.getElementById('reg-correo').value = '';
+    document.getElementById('reg-clave').value = '';
+  } else {
+    mostrarEstado(data.mensaje || 'Error al registrar');
+  }
+}
+
+async function login() {
+  const correo = document.getElementById('login-correo').value.trim();
+  const clave = document.getElementById('login-clave').value;
+  let errores = [];
+  if (!validarEmail(correo)) errores.push('Correo inválido.');
+  if (clave.length < 8 || clave.length > 32) errores.push('La contraseña debe tener entre 8 y 32 caracteres.');
+  if (errores.length) {
+    mostrarEstado(errores.join('\n'));
+    return;
+  }
+  const res = await fetch(API + '/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ correo, contraseña: clave })
+  });
+  const data = await res.json();
+  if (data.token) {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('rol', data.rol);
+    localStorage.setItem('nombre', data.nombre);
+    document.getElementById('login-correo').value = '';
+    document.getElementById('login-clave').value = '';
+    window.location.href = 'catalogo.html';
+  } else {
+    mostrarEstado(data.mensaje || 'Error en login');
+  }
+}
+</script>
 </body>
 </html>

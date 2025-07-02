@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Mi Carrito</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <nav>
+    <a href="catalogo.html">Catálogo</a>
+    <a href="carrito.html">Carrito</a>
+    <a href="favoritos.html">Favoritos</a>
+    <button onclick="cerrarSesion()" style="margin-left:30px;background:#e74c3c;color:#fff;border:none;padding:6px 16px;border-radius:5px;cursor:pointer;">Cerrar sesión</button>
+  </nav>
+  <h1>Mi Carrito</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Imagen</th>
+        <th>Producto</th>
+        <th>Precio</th>
+        <th>Cantidad</th>
+        <th>Subtotal</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody id="tabla-carrito"></tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4" style="text-align:right;"><strong>Total:</strong></td>
+        <td id="total-carrito"></td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  <button id="finalizar-btn" style="margin-top:20px;background:#28a745;">Finalizar compra</button>
+
+  <script>
+    const API = 'http://localhost:4550';
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Inicia sesión para acceder al carrito');
+      window.location.href = 'login.html';
+    }
+
+    function cerrarSesion() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('rol');
+      window.location.href = 'login.html';
+    }
+
+    async function cargarCarrito() {
+      const res = await fetch(API + '/carrito', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const carrito = await res.json();
+      const tabla = document.getElementById('tabla-carrito');
+      tabla.innerHTML = '';
+      let total = 0;
+      carrito.forEach(item => {
+        const subtotal = item.producto.precio * item.cantidad;
+        total += subtotal;
+        tabla.innerHTML += `
+          <tr>
+            <td>${item.producto.imagen ? `<img src="http://localhost:4550${escapeHtml(item.producto.imagen)}" alt="producto">` : ''}</td>
+            <td>${escapeHtml(item.producto.nombre)}</td>
+            <td>${item.producto.precio}</td>
+            <td>
+              <input type="number" min="1" value="${item.cantidad}" style="width:50px;" onchange="cambiarCantidad('${item.producto._id}', this.value)">
+            </td>
+            <td>${subtotal}</td>
+            <td>
+              <button onclick="eliminarDelCarrito('${item.producto._id}')">Eliminar</button>
+            </td>
+          </tr>
+        `;
+      });
+      document.getElementById('total-carrito').textContent = total;
+    }
+
+    async function eliminarDelCarrito(productoId) {
+      await fetch(API + '/carrito/' + productoId, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      cargarCarrito();
+    }
+
+    async function cambiarCantidad(productoId, cantidad) {
+      if (cantidad < 1 || isNaN(cantidad)) {
+        alert('La cantidad debe ser un número mayor a 0.');
+        return;
+      }
+      await fetch(API + '/carrito/' + productoId, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cantidad })
+      });
+      cargarCarrito();
+    }
+
+    document.getElementById('finalizar-btn').onclick = async function() {
+      if (!confirm('¿Estás seguro de finalizar la compra?')) return;
+      const res = await fetch(API + '/carrito/finalizar', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const data = await res.json();
+      alert(data.mensaje);
+      cargarCarrito();
+      window.location.href = 'catalogo.html';
+    };
+
+    async function agregarAlCarrito(productoId) {
+      const res = await fetch(API + '/carrito/' + productoId, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cantidad: 1 })
+      });
+      const data = await res.json();
+      alert(data.mensaje);
+    }
+    window.agregarAlCarrito = agregarAlCarrito;
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+
+    cargarCarrito();
+    window.eliminarDelCarrito = eliminarDelCarrito;
+    window.cambiarCantidad = cambiarCantidad;
+  </script>
+</body>
+</html>

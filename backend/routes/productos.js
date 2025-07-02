@@ -34,26 +34,28 @@ router.get('/', async (req, res) => {
     const productos = await Producto.find();
     res.json(productos);
   } catch (error) {
-    res.status(500).json({ mensaje: 'Error al obtener productos' });
+    res.status(500).json({ mensaje: 'Error al obtener productos', error: error.message });
   }
 });
 
-// Crear producto
-router.post('/', verificarToken, soloAdmin, upload.single('imagen'), validarProducto, async (req, res) => {
-  const errores = validationResult(req);
-  if (!errores.isEmpty()) {
-    return res.status(400).json({ errores: errores.array() });
-  }
+// Crear producto (la validación de imagen se hace en el backend, no en el validador)
+router.post('/', verificarToken, soloAdmin, upload.single('imagen'), async (req, res) => {
   try {
     let { nombre, precio, descripcion, stock, categoria } = req.body;
     precio = precio !== undefined ? Number(precio) : undefined;
     stock = stock !== undefined ? Number(stock) : undefined;
     const imagen = req.file ? '/uploads/' + req.file.filename : null;
+
+    // Validación manual de campos requeridos
+    if (!nombre || !precio || !descripcion || !stock || !categoria) {
+      return res.status(400).json({ mensaje: 'Todos los campos son obligatorios.' });
+    }
+
     const nuevoProducto = new Producto({ nombre, precio, descripcion, stock, imagen, categoria });
     await nuevoProducto.save();
     res.status(201).json(nuevoProducto);
   } catch (error) {
-    res.status(400).json({ mensaje: 'Error al crear producto' });
+    res.status(400).json({ mensaje: 'Error al crear producto', error: error.message });
   }
 });
 
@@ -64,16 +66,12 @@ router.get('/:id', async (req, res) => {
     if (!producto) return res.status(404).json({ mensaje: 'Producto no encontrado' });
     res.json(producto);
   } catch (error) {
-    res.status(500).json({ mensaje: 'Error al obtener producto' });
+    res.status(500).json({ mensaje: 'Error al obtener producto', error: error.message });
   }
 });
 
 // Actualizar producto por ID
-router.put('/:id', verificarToken, soloAdmin, upload.single('imagen'), validarProducto, async (req, res) => {
-  const errores = validationResult(req);
-  if (!errores.isEmpty()) {
-    return res.status(400).json({ errores: errores.array() });
-  }
+router.put('/:id', verificarToken, soloAdmin, upload.single('imagen'), async (req, res) => {
   try {
     let { nombre, precio, descripcion, stock, categoria } = req.body;
     precio = precio !== undefined ? Number(precio) : undefined;
@@ -86,7 +84,7 @@ router.put('/:id', verificarToken, soloAdmin, upload.single('imagen'), validarPr
     if (!producto) return res.status(404).json({ mensaje: 'Producto no encontrado' });
     res.json(producto);
   } catch (error) {
-    res.status(400).json({ mensaje: 'Error al actualizar producto' });
+    res.status(400).json({ mensaje: 'Error al actualizar producto', error: error.message });
   }
 });
 
@@ -97,7 +95,7 @@ router.delete('/:id', verificarToken, soloAdmin, async (req, res) => {
     if (!producto) return res.status(404).json({ mensaje: 'Producto no encontrado' });
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ mensaje: 'Error al eliminar producto' });
+    res.status(500).json({ mensaje: 'Error al eliminar producto', error: error.message });
   }
 });
 

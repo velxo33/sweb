@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const Resena = require('../models/resena');
 const Producto = require('../models/producto');
 
-const JWT_SECRET = 'secreto-super-seguro';
+const JWT_SECRET = process.env.JWT_SECRET || 'secreto-super-seguro';
 
 // Middleware para verificar token
 function verificarToken(req, res, next) {

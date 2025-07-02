@@ -3,52 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Reseñas</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f0f2f5;
-      padding: 20px;
-    }
-    h1 {
-      text-align: center;
-    }
-    #promedio-calificacion {
-      text-align: center;
-      font-size: 1.2em;
-      margin-bottom: 15px;
-    }
-    ul {
-      list-style: none;
-      padding: 0;
-      background: white;
-      border-radius: 10px;
-      max-width: 600px;
-      margin: auto;
-      box-shadow: 0 0 8px rgba(0,0,0,0.1);
-    }
-    li {
-      padding: 15px;
-      border-bottom: 1px solid #eee;
-    }
-    textarea, select, button {
-      display: block;
-      margin: 10px auto;
-      padding: 10px;
-      width: 90%;
-      max-width: 600px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background-color: #007bff;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-  </style>
+  <link rel="stylesheet" href="estilo.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
   <h1>Reseñas del Producto</h1>
@@ -82,11 +38,25 @@
       const ul = document.getElementById('lista-reseñas');
       ul.innerHTML = '';
       reseñas.forEach(r => {
-        ul.innerHTML += `<li><strong>${r.usuario.nombre}</strong>: ${r.estrellas}★ - ${r.comentario}</li>`;
+        ul.innerHTML += `<li><strong>${escapeHtml(r.usuario.nombre)}</strong>: ${r.estrellas}★ - ${escapeHtml(r.comentario)}</li>`;
       });
     }
 
+    function validarResena() {
+      const comentario = document.getElementById('comentario').value.trim();
+      const estrellas = document.getElementById('estrellas').value;
+      let errores = [];
+      if (comentario.length < 5 || comentario.length > 200) errores.push('El comentario debe tener entre 5 y 200 caracteres.');
+      if (!estrellas || isNaN(estrellas) || estrellas < 1 || estrellas > 5) errores.push('Selecciona una calificación válida.');
+      if (errores.length) {
+        alert(errores.join('\n'));
+        return false;
+      }
+      return true;
+    }
+
     async function enviarReseña() {
+      if (!validarResena()) return;
       const comentario = document.getElementById('comentario').value;
       const estrellas = document.getElementById('estrellas').value;
       await fetch(`${API}/resenas/${productoId}`, {
@@ -96,6 +66,12 @@
       });
       document.getElementById('comentario').value = '';
       cargarReseñas();
+    }
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
     }
 
     cargarReseñas();
