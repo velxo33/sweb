@@ -1,44 +1,84 @@
+/**
+ * @file Contiene la lógica para la página del catálogo de productos.
+ * @description Gestiona la visualización de productos, la interacción con favoritos y carrito, y el CRUD de productos para administradores.
+ */
+
+/** @constant {string} API - La URL base de la API del backend. */
 const API = 'http://localhost:4550';
+/** @constant {string|null} token - El token de autenticación JWT del usuario. */
 const token = localStorage.getItem('token');
+/** @constant {string|null} rol - El rol del usuario autenticado. */
 const rol = localStorage.getItem('rol');
+
+/** @type {string|null} - Almacena el ID del producto que se está editando. */
 let editandoId = null;
+/** @type {string[]} - Almacena los IDs de los productos favoritos del usuario. */
 let favoritosUsuario = [];
 
+// Redirige al login si no hay token.
 if (!token) {
   alert('Inicia sesión para acceder al catálogo');
   window.location.href = 'login.html';
 }
 
+/**
+ * Cierra la sesión del usuario eliminando los datos de localStorage y redirigiendo al login.
+ */
 function cerrarSesion() {
   localStorage.removeItem('token');
   localStorage.removeItem('rol');
   window.location.href = 'login.html';
 }
 
+/**
+ * Obtiene la lista de IDs de productos favoritos del usuario desde la API.
+ * @async
+ * @returns {Promise<void>}
+ */
 async function obtenerFavoritosUsuario() {
-  const res = await fetch(API + '/favoritos', {
-    headers: { 'Authorization': 'Bearer ' + token }
-  });
-  favoritosUsuario = (await res.json()).map(f => f._id);
-}
-
-async function toggleFavorito(id) {
-  if (favoritosUsuario.includes(id)) {
-    await fetch(API + '/favoritos/' + id, {
-      method: 'DELETE',
-      headers: { 'Authorization': 'Bearer ' + token }
+  try {
+    const res = await fetch(API + '/favoritos', {
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
     });
-  } else {
-    await fetch(API + '/favoritos/' + id, {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
+    if (!res.ok) throw new Error('Error al obtener favoritos');
+    const favoritos = await res.json();
+    favoritosUsuario = favoritos.map(f => f._id);
+  } catch (error) {
+    console.error("Error en obtenerFavoritosUsuario:", error);
   }
-  await obtenerFavoritosUsuario();
-  cargarProductos();
 }
-window.toggleFavorito = toggleFavorito;
 
+/**
+ * Agrega o quita un producto de la lista de favoritos del usuario.
+ * @async
+ * @param {string} id - El ID del producto.
+ * @returns {Promise<void>}
+ */
+async function toggleFavorito(id) {
+  try {
+    const method = favoritosUsuario.includes(id) ? 'DELETE' : 'POST';
+    await fetch(`${API}/favoritos/${id}`, {
+      method,
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
+    });
+    // Actualiza la lista de favoritos y recarga los productos para reflejar el cambio.
+    await obtenerFavoritosUsuario();
+    cargarProductos();
+  } catch (error) {
+    console.error("Error en toggleFavorito:", error);
+    alert("No se pudo actualizar la lista de favoritos.");
+  }
+}
+
+/**
+ * Carga todos los productos desde la API y los muestra en la tabla.
+ * @async
+ * @returns {Promise<void>}
+ */
 async function cargarProductos() {
   await obtenerFavoritosUsuario();
   try {
@@ -50,7 +90,7 @@ async function cargarProductos() {
       const esFavorito = favoritosUsuario.includes(p._id);
       tabla.innerHTML += `
         <tr>
-          <td>${p.imagen ? `<img src="http://localhost:4550${escapeHtml(p.imagen)}" alt="producto">` : ''}</td>
+          <td>${p.imagen ? `<img src="http://localhost:4550${escapeHtml(p.imagen)}" alt="producto" width="50">` : ''}</td>
           <td>${escapeHtml(p.nombre)}</td>
           <td>${p.precio}</td>
           <td>${escapeHtml(p.descripcion)}</td>
@@ -58,74 +98,79 @@ async function cargarProductos() {
           <td>
             ${rol === 'admin' ? `<button onclick="editarProducto('${p._id}')">Editar</button><button onclick="eliminarProducto('${p._id}')">Eliminar</button>` : ''}
             <button onclick="verDetalles('${p._id}')">Ver Detalles</button>
-            <button onclick="toggleFavorito('${p._id}')" style="background:${esFavorito ? '#ffc107' : '#007bff'};color:#fff;">${esFavorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}</button>
-            <button onclick="agregarAlCarrito('${p._id}')">Agregar al carrito</button>
+            <button onclick="toggleFavorito('${p._id}')" class="${esFavorito ? 'btn-fav-active' : 'btn-fav'}">${esFavorito ? '★ Favorito' : '☆ Favorito'}</button>
+            <!-- <button onclick="agregarAlCarrito('${p._id}')">Agregar al carrito</button> -->
           </td>
         </tr>`;
     });
   } catch (error) {
-    alert('Error al cargar productos');
+    console.error("Error al cargar productos:", error);
+    alert("No se pudieron cargar los productos.");
   }
 }
 
+/**
+ * Redirige a la página de detalles y reseñas de un producto.
+ * @param {string} id - El ID del producto.
+ */
 function verDetalles(id) {
   window.location.href = `reseñas.html?productoId=${id}`;
 }
 
-document.getElementById('formulario').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  let errores = [];
-  const nombre = document.getElementById('nombre').value.trim();
-  const precio = document.getElementById('precio').value;
-  const descripcion = document.getElementById('descripcion').value.trim();
-  const stock = document.getElementById('stock').value;
-  const categoria = document.getElementById('categoria').value.trim();
-
-  if (nombre.length < 2 || nombre.length > 50) errores.push('El nombre debe tener entre 2 y 50 caracteres.');
-  if (!precio || isNaN(precio) || Number(precio) < 0) errores.push('El precio debe ser un número positivo.');
-  if (descripcion.length > 200) errores.push('La descripción debe tener máximo 200 caracteres.');
-  if (!stock || isNaN(stock) || Number(stock) < 0) errores.push('El stock debe ser un número positivo.');
-  if (categoria.length < 2 || categoria.length > 30) errores.push('La categoría debe tener entre 2 y 30 caracteres.');
-
-  if (errores.length) {
-    alert(errores.join('\n'));
-    return false;
-  }
-
-  const formData = new FormData(formulario);
-  formData.set('categoria', categoria);
-  const url = editandoId ? `${API}/productos/${editandoId}` : `${API}/productos`;
-  const method = editandoId ? 'PUT' : 'POST';
+/**
+ * Agrega un producto al carrito de compras.
+ * @async
+ * @param {string} productoId - El ID del producto a agregar.
+ * @returns {Promise<void>}
+ */
+async function agregarAlCarrito(productoId) {
   try {
-    const response = await fetch(url, { method, headers: { Authorization: 'Bearer ' + token }, body: formData });
-    if (!response.ok) {
-      const data = await response.json();
-      if (data.errores && Array.isArray(data.errores)) {
-        alert('Errores:\n' + data.errores.map(e => e.msg).join('\n'));
-      } else if (data.mensaje) {
-        alert('Error: ' + data.mensaje);
-      } else {
-        alert('Error desconocido al guardar producto');
-      }
-      return;
-    }
-    formulario.reset();
-    editandoId = null;
-    cargarProductos();
-  } catch (err) {
-    alert('Error al guardar producto');
+    const res = await fetch(`${API}/carrito/${productoId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        cantidad: 1
+      })
+    });
+    const data = await res.json();
+    alert(data.mensaje);
+  } catch (error) {
+    console.error("Error al agregar al carrito:", error);
+    alert("No se pudo agregar el producto al carrito.");
   }
-});
+}
 
+/**
+ * Elimina un producto de la base de datos (solo para administradores).
+ * @async
+ * @param {string} id - El ID del producto a eliminar.
+ * @returns {Promise<void>}
+ */
 async function eliminarProducto(id) {
+  if (!confirm("¿Estás seguro de que quieres eliminar este producto?")) return;
   try {
-    await fetch(`${API}/productos/${id}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
+    await fetch(`${API}/productos/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
+    });
     cargarProductos();
-  } catch {
+  } catch (error) {
+    console.error("Error al eliminar producto:", error);
     alert('Error al eliminar producto');
   }
 }
 
+/**
+ * Carga los datos de un producto en el formulario para su edición (solo para administradores).
+ * @async
+ * @param {string} id - El ID del producto a editar.
+ * @returns {Promise<void>}
+ */
 async function editarProducto(id) {
   try {
     const res = await fetch(`${API}/productos/${id}`);
@@ -136,27 +181,60 @@ async function editarProducto(id) {
     document.getElementById('stock').value = p.stock;
     document.getElementById('categoria').value = p.categoria || '';
     editandoId = p._id;
-  } catch {
+    document.getElementById('form-container').scrollIntoView({ behavior: 'smooth' });
+  } catch (error) {
+    console.error("Error al cargar producto para editar:", error);
     alert('Error al cargar producto');
   }
 }
 
-async function agregarAlCarrito(productoId) {
-  const res = await fetch(API + '/carrito/' + productoId, {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cantidad: 1 })
-  });
-  const data = await res.json();
-  alert(data.mensaje);
-}
-window.agregarAlCarrito = agregarAlCarrito;
-
+/**
+ * Escapa caracteres HTML de una cadena de texto para prevenir ataques XSS.
+ * @param {string} text - El texto a sanitizar.
+ * @returns {string} El texto sanitizado.
+ */
 function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, m => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[m]));
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  } [m]));
 }
 
-if (rol === 'admin') document.getElementById('form-container').style.display = 'block';
+// Asigna el evento de submit al formulario de productos.
+document.getElementById('formulario').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const url = editandoId ? `${API}/productos/${editandoId}` : `${API}/productos`;
+  const method = editandoId ? 'PUT' : 'POST';
+
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Authorization': 'Bearer ' + token
+      },
+      body: formData
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.mensaje || 'Error en el servidor');
+    }
+    e.target.reset();
+    editandoId = null;
+    cargarProductos();
+  } catch (err) {
+    console.error("Error al guardar producto:", err);
+    alert('Error al guardar producto: ' + err.message);
+  }
+});
+
+// Muestra el formulario de productos si el usuario es administrador.
+if (rol === 'admin') {
+  document.getElementById('form-container').style.display = 'block';
+}
+
+// Carga inicial de productos.
 cargarProductos();

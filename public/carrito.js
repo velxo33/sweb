@@ -1,4 +1,5 @@
 
+    /*
     const API = 'http://localhost:4550';
     const token = localStorage.getItem('token');
     if (!token) {
@@ -94,3 +95,4 @@
     cargarCarrito();
     window.eliminarDelCarrito = eliminarDelCarrito;
     window.cambiarCantidad = cambiarCantidad;
+*/

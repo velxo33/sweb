@@ -1,3 +1,10 @@
+/**
+ * @file Módulo de conexión a la base de datos MongoDB.
+ * @description Configura y establece la conexión con MongoDB Atlas usando Mongoose.
+ * @requires dotenv
+ * @requires mongoose
+ */
+
 require('dotenv').config();
 const mongoose = require('mongoose');
 

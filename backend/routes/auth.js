@@ -1,13 +1,28 @@
-// auth.js corregido
+/**
+ * @file Contiene las rutas de la API para autenticación (registro y login).
+ * @description Define los endpoints para registrar nuevos usuarios y para iniciar sesión, aplicando validaciones y generando tokens JWT.
+ * @requires express
+ * @requires bcryptjs
+ * @requires jsonwebtoken
+ * @requires ../models/usuario
+ * @requires ../validators/usuario-validator
+ */
+
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const Usuario = require('../models/usuario');
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'secreto-super-seguro';
 const { validarRegistro, validarLogin } = require('../validators/usuario-validator');
 const { validationResult } = require('express-validator');
 
-// Registro
+const JWT_SECRET = process.env.JWT_SECRET || 'secreto-super-seguro';
+
+/**
+ * @route   POST /auth/registro
+ * @desc    Registra un nuevo usuario.
+ * @access  Public
+ */
 router.post('/registro', validarRegistro, async (req, res) => {
   const errores = validationResult(req);
   if (!errores.isEmpty()) {
@@ -17,38 +32,35 @@ router.post('/registro', validarRegistro, async (req, res) => {
   try {
     const { nombre, correo, contraseña, rol } = req.body;
 
-    // No permitir registro como admin desde el frontend
+    // Medida de seguridad: no permitir el registro de administradores desde el endpoint público.
     if (rol === 'admin') {
       return res.status(403).json({ mensaje: 'No puedes registrarte como administrador.' });
     }
 
-    // Si el rol es "visitante", lo guardamos como "cliente"
-    let userRole = rol === 'visitante' ? 'cliente' : 'cliente';
+    // Unifica el rol 'visitante' a 'cliente' para consistencia.
+    const userRole = (rol === 'visitante' || rol === 'cliente') ? 'cliente' : 'cliente';
 
-    // Verifica si el correo ya está registrado
     const existeUsuario = await Usuario.findOne({ correo });
     if (existeUsuario) {
       return res.status(400).json({ mensaje: 'El correo ya está registrado.' });
     }
 
-    // Hashea la contraseña
     const hash = await bcrypt.hash(contraseña, 10);
 
-    const usuario = new Usuario({
-      nombre,
-      correo,
-      contraseña: hash,
-      rol: userRole
-    });
-
+    const usuario = new Usuario({ nombre, correo, contraseña: hash, rol: userRole });
     await usuario.save();
     res.status(201).json({ mensaje: 'Usuario registrado correctamente.' });
   } catch (err) {
-    res.status(400).json({ mensaje: 'Error al registrar usuario.', error: err.message });
+    console.error("Error en registro:", err);
+    res.status(500).json({ mensaje: 'Error al registrar usuario.', error: err.message });
   }
 });
 
-// Login
+/**
+ * @route   POST /auth/login
+ * @desc    Inicia sesión y devuelve un token JWT.
+ * @access  Public
+ */
 router.post('/login', validarLogin, async (req, res) => {
   const errores = validationResult(req);
   if (!errores.isEmpty()) {
@@ -57,22 +69,17 @@ router.post('/login', validarLogin, async (req, res) => {
 
   const { correo, contraseña } = req.body;
   try {
-    console.log('Intentando login con:', correo);
     const usuario = await Usuario.findOne({ correo });
     if (!usuario) {
-      console.log('Usuario no encontrado');
-      return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+      return res.status(404).json({ mensaje: 'Credenciales incorrectas.' }); // Mensaje genérico por seguridad
     }
 
     const esValida = await bcrypt.compare(contraseña, usuario.contraseña);
     if (!esValida) {
-      console.log('Contraseña incorrecta');
-      return res.status(401).json({ mensaje: 'Contraseña incorrecta' });
+      return res.status(401).json({ mensaje: 'Credenciales incorrectas.' }); // Mensaje genérico por seguridad
     }
 
-    const jwt = require('jsonwebtoken');
     const token = jwt.sign({ id: usuario._id, rol: usuario.rol }, JWT_SECRET, { expiresIn: '1d' });
-    console.log('Login exitoso para:', correo);
     res.json({ token, rol: usuario.rol, nombre: usuario.nombre });
   } catch (error) {
     console.error('Error en login:', error);

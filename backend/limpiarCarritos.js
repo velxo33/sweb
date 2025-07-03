@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 
 // Reemplaza esta URI por la de tu MongoDB Atlas
